@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Service Status</title>
-<meta name="description" content="Live status for SeenRank, ORC and Echelon.">
+<meta name="description" content="Live status for SeenRank, ORC, Sift and our websites.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
@@ -62,10 +62,7 @@
   <p class="headline" id="headline">Checking</p>
   <p class="sub" id="sub">One moment.</p>
 
-  <section>
-    <h2>Services, last 30 days</h2>
-    <div id="services"></div>
-  </section>
+  <div id="services"></div>
 
   <section style="margin-top: 48px">
     <h2>Past incidents</h2>
@@ -82,14 +79,25 @@
 (function () {
   var REPO = 'd1fpc3/home-uptime';
   var API = 'https://api.github.com/repos/' + REPO;
-  // Monitoring began here; days before it are drawn as "no data", not as uptime.
-  var START = Date.parse('2026-11-26T16:41:48Z');
   var DAY = 86400000;
-  var SERVICES = [
-    { key: 'seenrank-api', name: 'SeenRank' },
-    { key: 'orc-api', name: 'ORC' },
-    { key: 'echelon-api', name: 'Echelon' }
+  // Keys match the "target: <key>" line check.sh writes into each issue. `since` is when monitoring
+  // of that target began; days before it are drawn as "no data", not as uptime.
+  var GROUPS = [
+    { title: 'Apps', services: [
+      { key: 'seenrank-app', name: 'SeenRank', since: '2026-11-26T16:41:48Z' },
+      { key: 'orc-app', name: 'ORC', since: '2026-11-26T16:41:48Z' },
+      { key: 'sift', name: 'Sift', since: '2026-11-26T17:15:00Z' }
+    ] },
+    { title: 'Websites', services: [
+      { key: 'seenrank.com', name: 'seenrank.com', since: '2026-11-26T17:15:00Z' },
+      { key: 'orcstandard.com', name: 'orcstandard.com', since: '2026-11-26T17:15:00Z' },
+      { key: 'd1fpc3.com', name: 'd1fpc3.com', since: '2026-11-26T17:15:00Z' },
+      { key: 'mechanicalandgasllc.com', name: 'mechanicalandgasllc.com', since: '2026-11-26T17:15:00Z' }
+    ] }
   ];
+  var SERVICES = [];
+  GROUPS.forEach(function (g) { g.services.forEach(function (s) { s.since = Date.parse(s.since); SERVICES.push(s); }); });
+  var START = Math.min.apply(null, SERVICES.map(function (s) { return s.since; }));
 
   var dateFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   var timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
@@ -116,25 +124,41 @@
     return h + (h === 1 ? ' hour ago' : ' hours ago');
   }
 
-  // check.sh writes "Unreachable since ...: seenrank-api.d1fpc3.com (530), orc-api.d1fpc3.com (000)."
-  // A whole-PC outage lists all three; anything we cannot attribute counts against all of them.
-  function affected(body) {
-    var hit = SERVICES.filter(function (s) { return body.indexOf(s.key) !== -1; }).map(function (s) { return s.key; });
-    return hit.length ? hit : SERVICES.map(function (s) { return s.key; });
+  // One issue per target; check.sh ends each body with "target: <key>". Issues without a known key
+  // (the old combined format, or a target since removed) are left out rather than guessed at.
+  function targetOf(body) {
+    var m = /^target: (\S+)\s*$/m.exec(body);
+    return m && SERVICES.some(function (s) { return s.key === m[1]; }) ? m[1] : null;
   }
 
   function toIncidents(issues) {
     return issues
-      .filter(function (i) { return !i.pull_request && !/simulated test alert/i.test(i.body || ''); })
+      .filter(function (i) { return !i.pull_request && !/simulated test alert/i.test(i.body || '') && targetOf(i.body || ''); })
       .map(function (i) {
-        var start = Date.parse(i.created_at);
         return {
-          start: start,
+          start: Date.parse(i.created_at),
           end: i.closed_at ? Date.parse(i.closed_at) : null,
-          services: affected(i.body || '')
+          services: [targetOf(i.body)]
         };
       })
       .sort(function (a, b) { return b.start - a.start; });
+  }
+
+  // Outages that overlap in time are shown as one incident, so a power cut that takes down both
+  // apps reads as one event, not two.
+  function merged(incidents) {
+    var out = [];
+    incidents.slice().sort(function (a, b) { return a.start - b.start; }).forEach(function (inc) {
+      var last = out[out.length - 1];
+      var lastEnd = last && (last.end || Infinity);
+      if (last && inc.start <= lastEnd) {
+        last.end = (last.end && inc.end) ? Math.max(last.end, inc.end) : null;
+        inc.services.forEach(function (k) { if (last.services.indexOf(k) === -1) last.services.push(k); });
+      } else {
+        out.push({ start: inc.start, end: inc.end, services: inc.services.slice() });
+      }
+    });
+    return out.reverse();
   }
 
   function downtimeIn(incidents, key, from, to) {
@@ -150,56 +174,64 @@
   function renderServices(incidents) {
     var box = document.getElementById('services');
     box.textContent = '';
+    GROUPS.forEach(function (g, gi) {
+      var sec = el('section');
+      if (gi) sec.style.marginTop = '48px';
+      sec.appendChild(el('h2', null, g.title + ', last 30 days'));
+      g.services.forEach(function (svc) { sec.appendChild(serviceRow(svc, incidents)); });
+      box.appendChild(sec);
+    });
+  }
+
+  function serviceRow(svc, incidents) {
     var now = Date.now();
     var today = new Date(); today.setHours(0, 0, 0, 0);
     var firstDay = today.getTime() - 29 * DAY;
+    var row = el('div', 'svc');
+    var open = incidents.some(function (i) { return !i.end && i.services.indexOf(svc.key) !== -1; });
+    row.appendChild(el('div', 'svc-name', svc.name));
 
-    SERVICES.forEach(function (svc) {
-      var row = el('div', 'svc');
-      var open = incidents.some(function (i) { return !i.end && i.services.indexOf(svc.key) !== -1; });
-      row.appendChild(el('div', 'svc-name', svc.name));
+    var from = Math.max(firstDay, svc.since);
+    var watched = now - from;
+    var down = downtimeIn(incidents, svc.key, from, now);
+    var pct = watched > 0 ? (100 * (1 - down / watched)) : 100;
+    var pctText = pct >= 99.995 ? '100%' : pct.toFixed(2) + '%';
+    row.appendChild(el('div', 'svc-state' + (open ? ' is-down' : ''), open ? 'Unreachable' : 'Operational · ' + pctText));
 
-      var from = Math.max(firstDay, START);
-      var watched = now - from;
-      var down = downtimeIn(incidents, svc.key, from, now);
-      var pct = watched > 0 ? (100 * (1 - down / watched)) : 100;
-      var pctText = pct >= 99.995 ? '100%' : pct.toFixed(2) + '%';
-      row.appendChild(el('div', 'svc-state' + (open ? ' is-down' : ''), open ? 'Unreachable' : 'Operational · ' + pctText));
-
-      var strip = el('div', 'strip');
-      for (var d = 0; d < 30; d++) {
-        var a = firstDay + d * DAY, b = a + DAY;
-        var tick = el('i');
-        if (b <= START) {
-          tick.className = 'pre';
-          tick.title = dateFmt.format(a) + ': before monitoring began';
-        } else {
-          var lost = downtimeIn(incidents, svc.key, a, Math.min(b, now));
-          if (lost >= 60 * 60000) tick.className = 'bad';
-          else if (lost > 0) tick.className = 'part';
-          tick.title = dateFmt.format(a) + (lost ? ': down ' + duration(lost) : ': no downtime');
-        }
-        strip.appendChild(tick);
+    var strip = el('div', 'strip');
+    for (var d = 0; d < 30; d++) {
+      var a = firstDay + d * DAY, b = a + DAY;
+      var tick = el('i');
+      if (b <= svc.since) {
+        tick.className = 'pre';
+        tick.title = dateFmt.format(a) + ': before monitoring began';
+      } else {
+        var lost = downtimeIn(incidents, svc.key, a, Math.min(b, now));
+        if (lost >= 60 * 60000) tick.className = 'bad';
+        else if (lost > 0) tick.className = 'part';
+        tick.title = dateFmt.format(a) + (lost ? ': down ' + duration(lost) : ': no downtime');
       }
-      row.appendChild(strip);
-      var legend = el('div', 'strip-legend mono');
-      legend.appendChild(el('span', null, '30 days ago'));
-      legend.appendChild(el('span', null, 'Today'));
-      row.appendChild(legend);
-      box.appendChild(row);
-    });
+      strip.appendChild(tick);
+    }
+    row.appendChild(strip);
+    var legend = el('div', 'strip-legend mono');
+    legend.appendChild(el('span', null, '30 days ago'));
+    legend.appendChild(el('span', null, 'Today'));
+    row.appendChild(legend);
+    return row;
   }
 
   function names(keys) {
     var n = SERVICES.filter(function (s) { return keys.indexOf(s.key) !== -1; }).map(function (s) { return s.name; });
-    if (n.length === SERVICES.length) return 'All services';
-    return n.join(' and ');
+    if (n.length === SERVICES.length) return 'Everything';
+    if (n.length <= 2) return n.join(' and ');
+    return n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1];
   }
 
   function renderIncidents(incidents) {
     var box = document.getElementById('incidents');
     box.textContent = '';
-    var past = incidents.filter(function (i) { return i.end; });
+    var past = merged(incidents).filter(function (i) { return i.end; });
     if (!past.length) {
       box.appendChild(el('div', 'empty', 'Nothing to report since monitoring began on ' + dateFmt.format(START) + '.'));
       return;
@@ -216,15 +248,21 @@
     var open = incidents.filter(function (i) { return !i.end; });
     var h = document.getElementById('headline'), sub = document.getElementById('sub');
     if (open.length) {
-      var keys = [];
-      open.forEach(function (i) { i.services.forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); }); });
+      var keys = [], since = Infinity;
+      open.forEach(function (i) {
+        since = Math.min(since, i.start);
+        i.services.forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
+      });
+      var apps = keys.indexOf('seenrank-app') !== -1 || keys.indexOf('orc-app') !== -1;
       h.className = 'headline is-down';
-      h.textContent = keys.length === SERVICES.length ? 'Services are unreachable' : names(keys) + ' is unreachable';
-      sub.textContent = 'Since ' + timeFmt.format(open[open.length - 1].start) + '. Sign-in and saved data are paused; the websites still load. We know, and this page updates on its own when things are back.';
+      h.textContent = names(keys) + (keys.length === 1 ? ' is' : ' are') + ' unreachable';
+      sub.textContent = 'Since ' + timeFmt.format(since) + '. ' +
+        (apps ? 'Sign-in and saved data are paused. ' : '') +
+        'We know, and this page updates on its own when things are back.';
     } else {
       h.className = 'headline';
       h.textContent = 'All systems normal';
-      sub.textContent = 'SeenRank, ORC and Echelon are answering.';
+      sub.textContent = 'Every app and website is answering.';
     }
   }
 

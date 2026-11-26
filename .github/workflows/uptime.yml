@@ -28,4 +28,4 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add state.txt
-          git diff --cached --quiet || { git commit -m "uptime: $(cut -d' ' -f1 state.txt)"; git push; }
+          git diff --cached --quiet || { git commit -m "uptime: $(grep -c ' down ' state.txt) down"; git pull --rebase -q; git push; }
