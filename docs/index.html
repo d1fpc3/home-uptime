@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service Status</title>
+<meta name="description" content="Live status for SeenRank, ORC and Echelon.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0b0c;
+    --ink: #ece8dc;
+    --ink-2: rgba(236, 232, 220, 0.62);
+    --ink-3: rgba(236, 232, 220, 0.38);
+    --rule: rgba(232, 226, 208, 0.1);
+    --gold: #d4af37;
+    --down: #d9695f;
+    --tick: rgba(236, 232, 220, 0.16);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 15px/1.55 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 64px 16px 80px; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; letter-spacing: 0.04em; }
+  h1 { font-size: 15px; font-weight: 500; margin: 0 0 40px; color: var(--ink-2); }
+  .headline { font-size: clamp(30px, 6vw, 44px); font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; margin: 0 0 12px; }
+  .headline.is-down { color: var(--down); }
+  .sub { color: var(--ink-2); margin: 0 0 56px; max-width: 34em; }
+  section { border-top: 1px solid var(--rule); padding-top: 20px; margin-top: 8px; }
+  h2 { font: 500 11px/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; }
+  .svc { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 18px 0; border-bottom: 1px solid var(--rule); }
+  .svc:last-child { border-bottom: 0; }
+  .svc-name { font-weight: 500; }
+  .svc-state { text-align: right; color: var(--ink-2); }
+  .svc-state.is-down { color: var(--down); }
+  .strip { grid-column: 1 / -1; display: flex; gap: 2px; height: 22px; margin-top: 10px; }
+  .strip i { flex: 1; background: var(--tick); border-radius: 1px; }
+  .strip i.part { background: var(--gold); }
+  .strip i.bad { background: var(--down); }
+  .strip i.pre { background: transparent; border-bottom: 1px solid var(--rule); border-radius: 0; }
+  .strip-legend { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--ink-3); }
+  .inc { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+  .inc:last-child { border-bottom: 0; }
+  .inc-when { color: var(--ink-3); }
+  .inc-what { margin-top: 4px; }
+  .empty { color: var(--ink-2); padding: 16px 0; }
+  footer { margin-top: 56px; color: var(--ink-3); }
+  footer a { color: var(--gold); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Service Status</h1>
+  <p class="headline" id="headline">Checking</p>
+  <p class="sub" id="sub">One moment.</p>
+
+  <section>
+    <h2>Services, last 30 days</h2>
+    <div id="services"></div>
+  </section>
+
+  <section style="margin-top: 48px">
+    <h2>Past incidents</h2>
+    <div id="incidents"></div>
+  </section>
+
+  <footer class="mono">
+    <div id="checked">&nbsp;</div>
+    <div style="margin-top: 6px">Checked every 5 minutes from outside our network. Times in your time zone.</div>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var REPO = 'd1fpc3/home-uptime';
+  var API = 'https://api.github.com/repos/' + REPO;
+  // Monitoring began here; days before it are drawn as "no data", not as uptime.
+  var START = Date.parse('2026-11-26T16:41:48Z');
+  var DAY = 86400000;
+  var SERVICES = [
+    { key: 'seenrank-api', name: 'SeenRank' },
+    { key: 'orc-api', name: 'ORC' },
+    { key: 'echelon-api', name: 'Echelon' }
+  ];
+
+  var dateFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  var timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function duration(ms) {
+    var m = Math.max(1, Math.round(ms / 60000));
+    if (m < 60) return m + (m === 1 ? ' minute' : ' minutes');
+    var h = Math.floor(m / 60), r = m % 60;
+    return h + (h === 1 ? ' hour' : ' hours') + (r ? ' ' + r + ' min' : '');
+  }
+
+  function ago(ms) {
+    var m = Math.round((Date.now() - ms) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    var h = Math.round(m / 60);
+    return h + (h === 1 ? ' hour ago' : ' hours ago');
+  }
+
+  // check.sh writes "Unreachable since ...: seenrank-api.d1fpc3.com (530), orc-api.d1fpc3.com (000)."
+  // A whole-PC outage lists all three; anything we cannot attribute counts against all of them.
+  function affected(body) {
+    var hit = SERVICES.filter(function (s) { return body.indexOf(s.key) !== -1; }).map(function (s) { return s.key; });
+    return hit.length ? hit : SERVICES.map(function (s) { return s.key; });
+  }
+
+  function toIncidents(issues) {
+    return issues
+      .filter(function (i) { return !i.pull_request && !/simulated test alert/i.test(i.body || ''); })
+      .map(function (i) {
+        var start = Date.parse(i.created_at);
+        return {
+          start: start,
+          end: i.closed_at ? Date.parse(i.closed_at) : null,
+          services: affected(i.body || '')
+        };
+      })
+      .sort(function (a, b) { return b.start - a.start; });
+  }
+
+  function downtimeIn(incidents, key, from, to) {
+    var total = 0;
+    incidents.forEach(function (inc) {
+      if (inc.services.indexOf(key) === -1) return;
+      var s = Math.max(inc.start, from), e = Math.min(inc.end || Date.now(), to);
+      if (e > s) total += e - s;
+    });
+    return total;
+  }
+
+  function renderServices(incidents) {
+    var box = document.getElementById('services');
+    box.textContent = '';
+    var now = Date.now();
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var firstDay = today.getTime() - 29 * DAY;
+
+    SERVICES.forEach(function (svc) {
+      var row = el('div', 'svc');
+      var open = incidents.some(function (i) { return !i.end && i.services.indexOf(svc.key) !== -1; });
+      row.appendChild(el('div', 'svc-name', svc.name));
+
+      var from = Math.max(firstDay, START);
+      var watched = now - from;
+      var down = downtimeIn(incidents, svc.key, from, now);
+      var pct = watched > 0 ? (100 * (1 - down / watched)) : 100;
+      var pctText = pct >= 99.995 ? '100%' : pct.toFixed(2) + '%';
+      row.appendChild(el('div', 'svc-state' + (open ? ' is-down' : ''), open ? 'Unreachable' : 'Operational · ' + pctText));
+
+      var strip = el('div', 'strip');
+      for (var d = 0; d < 30; d++) {
+        var a = firstDay + d * DAY, b = a + DAY;
+        var tick = el('i');
+        if (b <= START) {
+          tick.className = 'pre';
+          tick.title = dateFmt.format(a) + ': before monitoring began';
+        } else {
+          var lost = downtimeIn(incidents, svc.key, a, Math.min(b, now));
+          if (lost >= 60 * 60000) tick.className = 'bad';
+          else if (lost > 0) tick.className = 'part';
+          tick.title = dateFmt.format(a) + (lost ? ': down ' + duration(lost) : ': no downtime');
+        }
+        strip.appendChild(tick);
+      }
+      row.appendChild(strip);
+      var legend = el('div', 'strip-legend mono');
+      legend.appendChild(el('span', null, '30 days ago'));
+      legend.appendChild(el('span', null, 'Today'));
+      row.appendChild(legend);
+      box.appendChild(row);
+    });
+  }
+
+  function names(keys) {
+    var n = SERVICES.filter(function (s) { return keys.indexOf(s.key) !== -1; }).map(function (s) { return s.name; });
+    if (n.length === SERVICES.length) return 'All services';
+    return n.join(' and ');
+  }
+
+  function renderIncidents(incidents) {
+    var box = document.getElementById('incidents');
+    box.textContent = '';
+    var past = incidents.filter(function (i) { return i.end; });
+    if (!past.length) {
+      box.appendChild(el('div', 'empty', 'Nothing to report since monitoring began on ' + dateFmt.format(START) + '.'));
+      return;
+    }
+    past.slice(0, 20).forEach(function (inc) {
+      var row = el('div', 'inc');
+      row.appendChild(el('div', 'inc-when mono', dateFmt.format(inc.start) + ', ' + timeFmt.format(inc.start) + ' to ' + timeFmt.format(inc.end)));
+      row.appendChild(el('div', 'inc-what', names(inc.services) + ' unreachable for ' + duration(inc.end - inc.start) + '.'));
+      box.appendChild(row);
+    });
+  }
+
+  function renderHeadline(incidents) {
+    var open = incidents.filter(function (i) { return !i.end; });
+    var h = document.getElementById('headline'), sub = document.getElementById('sub');
+    if (open.length) {
+      var keys = [];
+      open.forEach(function (i) { i.services.forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); }); });
+      h.className = 'headline is-down';
+      h.textContent = keys.length === SERVICES.length ? 'Services are unreachable' : names(keys) + ' is unreachable';
+      sub.textContent = 'Since ' + timeFmt.format(open[open.length - 1].start) + '. Sign-in and saved data are paused; the websites still load. We know, and this page updates on its own when things are back.';
+    } else {
+      h.className = 'headline';
+      h.textContent = 'All systems normal';
+      sub.textContent = 'SeenRank, ORC and Echelon are answering.';
+    }
+  }
+
+  function renderChecked(runs) {
+    var c = document.getElementById('checked');
+    var last = runs && runs.workflow_runs && runs.workflow_runs[0];
+    if (!last) { c.textContent = ' '; return; }
+    var t = Date.parse(last.updated_at);
+    // GitHub's scheduler drifts, but a gap this long means checks have stalled and the page may be stale.
+    c.textContent = (Date.now() - t > 45 * 60000 ? 'Checks are delayed. Last check ' : 'Last check ') + ago(t) + '.';
+  }
+
+  function getJSON(url) {
+    return fetch(url, { headers: { Accept: 'application/vnd.github+json' } }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    });
+  }
+
+  function load() {
+    Promise.all([
+      getJSON(API + '/issues?labels=outage&state=all&per_page=100'),
+      getJSON(API + '/actions/workflows/uptime.yml/runs?status=success&per_page=1').catch(function () { return null; })
+    ]).then(function (res) {
+      var incidents = toIncidents(res[0]);
+      renderHeadline(incidents);
+      renderServices(incidents);
+      renderIncidents(incidents);
+      renderChecked(res[1]);
+    }).catch(function () {
+      document.getElementById('headline').textContent = 'Status unavailable';
+      document.getElementById('sub').textContent = 'We could not load the latest checks. Try again in a few minutes.';
+    });
+  }
+
+  load();
+  // Five minutes matches the check cadence and stays well inside GitHub's 60 requests/hour for visitors.
+  setInterval(function () { if (!document.hidden) load(); }, 5 * 60000);
+})();
+</script>
+</body>
+</html>
