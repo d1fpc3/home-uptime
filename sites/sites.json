@@ -153,47 +153,6 @@
           }
         ]
       }
-    },
-    {
-      "id": "mechanicalandgas",
-      "deployTo": "Mech-Gas: status/index.html",
-      "title": "Mechanical & Gas Services Status",
-      "description": "Live status for mechanicalandgasllc.com.",
-      "canonical": "https://mechanicalandgasllc.com/status/",
-      "home": "https://mechanicalandgasllc.com/",
-      "homeLabel": "Back to the website",
-      "contactLead": "Need service now? Call",
-      "contactHref": "tel:4438656021",
-      "contactLabel": "(443) 865-6021",
-      "theme": {
-        "bg": "#06080f",
-        "ink": "#f2f4f8",
-        "ink2": "#aab0c4",
-        "ink3": "#8890aa",
-        "rule": "rgba(242, 244, 248, 0.1)",
-        "tick": "rgba(242, 244, 248, 0.14)",
-        "accent": "#e63050",
-        "part": "rgba(230, 48, 80, 0.5)",
-        "down": "#e63050"
-      },
-      "config": {
-        "everything": "The website",
-        "allGood": "The website is up",
-        "allGoodSub": "mechanicalandgasllc.com is answering normally.",
-        "appDown": "",
-        "groups": [
-          {
-            "title": "Website",
-            "services": [
-              {
-                "key": "mechanicalandgasllc.com",
-                "name": "mechanicalandgasllc.com",
-                "since": "2026-11-26T17:15:00Z"
-              }
-            ]
-          }
-        ]
-      }
     }
   ]
 }
