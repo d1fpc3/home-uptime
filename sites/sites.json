@@ -1,0 +1,199 @@
+{
+  "_note": "One status page per domain. Service keys and `since` must match check.sh TARGETS. Run `node sites/build.mjs`, then copy sites/out/<id>.html to the path in `deployTo`.",
+  "sites": [
+    {
+      "id": "seenrank",
+      "deployTo": "seenrank: client/public/status/index.html",
+      "title": "SeenRank Status",
+      "description": "Live status and outage history for SeenRank and seenrank.com.",
+      "canonical": "https://seenrank.com/status/",
+      "home": "https://seenrank.com/",
+      "homeLabel": "Back to SeenRank",
+      "contactLead": "Questions?",
+      "contactHref": "mailto:support@seenrank.com",
+      "contactLabel": "support@seenrank.com",
+      "theme": {
+        "bg": "#faf7f1",
+        "ink": "#1a1714",
+        "ink2": "#5f574e",
+        "ink3": "#776e63",
+        "rule": "rgba(26, 23, 20, 0.1)",
+        "tick": "rgba(26, 23, 20, 0.12)",
+        "accent": "#d61f69",
+        "part": "rgba(214, 31, 105, 0.45)",
+        "down": "#d61f69"
+      },
+      "config": {
+        "everything": "SeenRank",
+        "allGood": "SeenRank is running normally",
+        "allGoodSub": "The app and the website are both answering.",
+        "appDown": "Sign-in and saved data are paused. Your data is safe.",
+        "groups": [
+          {
+            "title": "SeenRank",
+            "services": [
+              {
+                "key": "seenrank-app",
+                "name": "SeenRank app",
+                "what": "Sign-in, dashboards, reports and checks",
+                "app": true,
+                "since": "2026-11-26T16:41:48Z"
+              },
+              {
+                "key": "seenrank.com",
+                "name": "seenrank.com",
+                "what": "The website",
+                "since": "2026-11-26T17:15:00Z"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "orc",
+      "deployTo": "orc-performance: client/public/status/index.html",
+      "title": "ORC Status",
+      "description": "Live status and outage history for the ORC app and orcstandard.com.",
+      "canonical": "https://orcstandard.com/status/",
+      "home": "https://orcstandard.com/",
+      "homeLabel": "Back to ORC",
+      "contactLead": "Questions?",
+      "contactHref": "mailto:info@orcstandard.com",
+      "contactLabel": "info@orcstandard.com",
+      "theme": {
+        "bg": "#000000",
+        "ink": "#ece8dc",
+        "ink2": "rgba(236, 232, 220, 0.62)",
+        "ink3": "rgba(236, 232, 220, 0.42)",
+        "rule": "rgba(232, 226, 208, 0.1)",
+        "tick": "rgba(236, 232, 220, 0.16)",
+        "accent": "#d4af37",
+        "part": "#d4af37",
+        "down": "#d9695f"
+      },
+      "config": {
+        "everything": "ORC",
+        "allGood": "ORC is running normally",
+        "allGoodSub": "The app and the website are both answering.",
+        "appDown": "Sign-in, runs and saves are paused. Your runs and changes are safe.",
+        "groups": [
+          {
+            "title": "ORC",
+            "services": [
+              {
+                "key": "orc-app",
+                "name": "ORC app",
+                "what": "Sign-in, runs, clubs, leaderboard and the shop",
+                "app": true,
+                "since": "2026-11-26T16:41:48Z"
+              },
+              {
+                "key": "orcstandard.com",
+                "name": "orcstandard.com",
+                "what": "The website",
+                "since": "2026-11-26T17:15:00Z"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "d1fpc3",
+      "deployTo": "d1fpc3-site: status/index.html",
+      "title": "d1fpc3 Status",
+      "description": "Live status and outage history for d1fpc3.com, Unwrap and Sift.",
+      "canonical": "https://d1fpc3.com/status/",
+      "home": "https://d1fpc3.com/",
+      "homeLabel": "Back to d1fpc3.com",
+      "contactLead": "Questions?",
+      "contactHref": "https://d1fpc3.com/build/",
+      "contactLabel": "Get in touch",
+      "theme": {
+        "bg": "#0b0b0c",
+        "ink": "#ece8dc",
+        "ink2": "rgba(236, 232, 220, 0.62)",
+        "ink3": "rgba(236, 232, 220, 0.42)",
+        "rule": "rgba(232, 226, 208, 0.1)",
+        "tick": "rgba(236, 232, 220, 0.16)",
+        "accent": "#d4af37",
+        "part": "#d4af37",
+        "down": "#d9695f"
+      },
+      "config": {
+        "everything": "Everything",
+        "allGood": "All systems normal",
+        "allGoodSub": "d1fpc3.com, Unwrap and Sift are all answering.",
+        "appDown": "Sift is paused until it is back.",
+        "groups": [
+          {
+            "title": "Services",
+            "services": [
+              {
+                "key": "d1fpc3.com",
+                "name": "d1fpc3.com",
+                "what": "The website",
+                "since": "2026-11-26T17:15:00Z"
+              },
+              {
+                "key": "unwrap",
+                "name": "Unwrap",
+                "what": "unwrap.d1fpc3.com",
+                "since": "2026-11-26T17:26:00Z"
+              },
+              {
+                "key": "sift",
+                "name": "Sift",
+                "what": "The Sift service",
+                "app": true,
+                "since": "2026-11-26T17:15:00Z"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "mechanicalandgas",
+      "deployTo": "Mech-Gas: status/index.html",
+      "title": "Mechanical & Gas Services Status",
+      "description": "Live status for mechanicalandgasllc.com.",
+      "canonical": "https://mechanicalandgasllc.com/status/",
+      "home": "https://mechanicalandgasllc.com/",
+      "homeLabel": "Back to the website",
+      "contactLead": "Need service now? Call",
+      "contactHref": "tel:4438656021",
+      "contactLabel": "(443) 865-6021",
+      "theme": {
+        "bg": "#06080f",
+        "ink": "#f2f4f8",
+        "ink2": "#aab0c4",
+        "ink3": "#8890aa",
+        "rule": "rgba(242, 244, 248, 0.1)",
+        "tick": "rgba(242, 244, 248, 0.14)",
+        "accent": "#e63050",
+        "part": "rgba(230, 48, 80, 0.5)",
+        "down": "#e63050"
+      },
+      "config": {
+        "everything": "The website",
+        "allGood": "The website is up",
+        "allGoodSub": "mechanicalandgasllc.com is answering normally.",
+        "appDown": "",
+        "groups": [
+          {
+            "title": "Website",
+            "services": [
+              {
+                "key": "mechanicalandgasllc.com",
+                "name": "mechanicalandgasllc.com",
+                "since": "2026-11-26T17:15:00Z"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

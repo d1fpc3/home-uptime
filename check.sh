@@ -13,6 +13,7 @@ TARGETS=(
   "seenrank.com|seenrank.com|https://seenrank.com/"
   "orcstandard.com|orcstandard.com|https://orcstandard.com/"
   "d1fpc3.com|d1fpc3.com|https://d1fpc3.com/"
+  "unwrap|Unwrap|https://unwrap.d1fpc3.com/"
   "mechanicalandgasllc.com|mechanicalandgasllc.com|https://mechanicalandgasllc.com/"
 )
 UA="Mozilla/5.0 (compatible; d1-status/1.0; +https://d1fpc3.github.io/home-uptime/)"
